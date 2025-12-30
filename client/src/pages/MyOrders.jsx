@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { Package, Truck, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Package, Truck, CheckCircle, XCircle, Clock, CreditCard, Banknote } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const MyOrders = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { addToast } = useToast();
 
     useEffect(() => {
         fetchOrders();
@@ -25,10 +27,10 @@ const MyOrders = () => {
         if (!confirm('Are you sure you want to cancel this order?')) return;
         try {
             await api.put(`/orders/${id}/cancel`);
-            alert('Order cancelled successfully');
+            addToast('Order cancelled successfully', 'success');
             fetchOrders();
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to cancel');
+            addToast(err.response?.data?.message || 'Failed to cancel', 'error');
         }
     };
 
@@ -65,7 +67,14 @@ const MyOrders = () => {
                                     </div>
                                     <div>
                                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>TOTAL</div>
-                                        <div style={{ color: 'var(--accent)', fontWeight: 'bold' }}>${order.totalAmount}</div>
+                                        <div style={{ color: 'var(--accent)', fontWeight: 'bold' }}>${Number(order.totalAmount).toFixed(2)}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>PAYMENT</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {order.paymentMethod === 'cod' ? <Banknote size={16} color="var(--success)" /> : <CreditCard size={16} color="var(--primary)" />}
+                                            <span style={{ textTransform: 'uppercase', fontSize: '0.9rem' }}>{order.paymentMethod || 'Card'}</span>
+                                        </div>
                                     </div>
                                     <div>
                                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>ORDER ID</div>

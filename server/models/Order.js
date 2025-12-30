@@ -19,6 +19,10 @@ const Order = sequelize.define('Order', {
         type: DataTypes.STRING,
         defaultValue: 'unpaid',
     },
+    paymentMethod: {
+        type: DataTypes.ENUM('card', 'cod'),
+        defaultValue: 'card',
+    },
 });
 
 module.exports = Order;

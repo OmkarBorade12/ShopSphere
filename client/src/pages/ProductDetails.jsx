@@ -3,19 +3,23 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Star, ShoppingCart, ArrowLeft, Send } from 'lucide-react';
+import PaymentModal from '../components/PaymentModal';
 
 const ProductDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { addToCart } = useCart();
     const { user } = useAuth();
+    const { addToast } = useToast();
 
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
     useEffect(() => {
         fetchProduct();
@@ -32,10 +36,31 @@ const ProductDetails = () => {
         }
     };
 
+    const handleBuyNow = () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        setIsPaymentOpen(true);
+    };
+
+    const handlePaymentSubmit = async (data) => {
+        try {
+            const items = [{ productId: product.id, quantity: 1 }];
+            await api.post('/orders', { items, paymentMethod: data.paymentMethod });
+            setIsPaymentOpen(false);
+            addToast('Order placed successfully!', 'success');
+            navigate('/my-orders');
+        } catch (err) {
+            addToast('Purchase failed: ' + (err.response?.data?.message || err.message), 'error');
+            setIsPaymentOpen(false);
+        }
+    };
+
     const handleSubmitReview = async (e) => {
         e.preventDefault();
         if (rating === 0) {
-            alert('Please select a rating');
+            addToast('Please select a rating', 'info');
             return;
         }
         setSubmitting(true);
@@ -43,8 +68,9 @@ const ProductDetails = () => {
             await api.post(`/products/${id}/reviews`, { rating, comment });
             setComment('');
             fetchProduct(); // Refresh to see new review
+            addToast('Review submitted successfully', 'success');
         } catch (err) {
-            alert('Failed to submit review');
+            addToast('Failed to submit review', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -120,19 +146,44 @@ const ProductDetails = () => {
 
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         {user?.role !== 'admin' && (
-                            <button
-                                onClick={() => addToCart(product)}
-                                disabled={product.stock === 0}
-                                className="btn btn-primary"
-                                style={{ flex: 1, padding: '1rem', fontSize: '1.1rem' }}
-                            >
-                                <ShoppingCart size={20} />
-                                {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => addToCart(product)}
+                                    disabled={product.stock === 0}
+                                    className="btn btn-primary"
+                                    style={{ flex: 1, padding: '1rem', fontSize: '1.1rem' }}
+                                >
+                                    <ShoppingCart size={20} />
+                                    {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
+                                </button>
+                                <button
+                                    onClick={handleBuyNow}
+                                    disabled={product.stock === 0}
+                                    className="btn"
+                                    style={{
+                                        flex: 1,
+                                        padding: '1rem',
+                                        fontSize: '1.1rem',
+                                        background: 'var(--accent)',
+                                        color: 'black',
+                                        fontWeight: 'bold',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    Buy Now
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
             </div>
+
+            <PaymentModal
+                isOpen={isPaymentOpen}
+                onClose={() => setIsPaymentOpen(false)}
+                onSubmit={handlePaymentSubmit}
+                totalAmount={product.price}
+            />
 
             {/* Reviews Section */}
             <div style={{ maxWidth: '800px' }}>

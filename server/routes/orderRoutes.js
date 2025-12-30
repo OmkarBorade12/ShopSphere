@@ -15,7 +15,7 @@ const processPayment = async (amount) => {
 // Create Order (Checkout)
 router.post('/', auth, async (req, res) => {
     try {
-        const { items } = req.body; // items: [{productId, quantity}]
+        const { items, paymentMethod = 'card' } = req.body; // items: [{productId, quantity}], paymentMethod: 'card' | 'cod'
 
         if (!items || items.length === 0) {
             return res.status(400).json({ message: 'No items in order' });
@@ -41,10 +41,17 @@ router.post('/', auth, async (req, res) => {
             });
         }
 
-        // Simulate Payment
-        const paymentResult = await processPayment(totalAmount);
-        if (!paymentResult.success) {
-            return res.status(400).json({ message: 'Payment failed' });
+        let paymentStatus = 'unpaid';
+
+        if (paymentMethod === 'card') {
+            // Simulate Payment
+            const paymentResult = await processPayment(totalAmount);
+            if (!paymentResult.success) {
+                return res.status(400).json({ message: 'Payment failed' });
+            }
+            paymentStatus = 'paid';
+        } else if (paymentMethod === 'cod') {
+            paymentStatus = 'pending';
         }
 
         // Create Order
@@ -52,7 +59,8 @@ router.post('/', auth, async (req, res) => {
             userId: req.user.id,
             totalAmount,
             status: 'pending', // Initial status
-            paymentStatus: 'paid'
+            paymentStatus,
+            paymentMethod
         });
 
         // Create Order Items and Update Stock

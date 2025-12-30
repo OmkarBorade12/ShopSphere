@@ -51,6 +51,22 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    useEffect(() => {
+        const interceptor = api.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error.response && error.response.status === 401) {
+                    logout();
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            api.interceptors.response.eject(interceptor);
+        };
+    }, []);
+
     return (
         <AuthContext.Provider value={{ user, login, register, logout, loading }}>
             {children}
